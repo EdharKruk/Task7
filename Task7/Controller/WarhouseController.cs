@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Data;
+using Microsoft.AspNetCore.Mvc;
 using Task7.Models;
 
 namespace Task7.Controller;
@@ -78,5 +80,52 @@ public class WarehouseController : ControllerBase
 
             return Ok("Success");
         }
+    }
+    
+    [HttpPost("addProductViaStoredProc")]
+    public async Task<IActionResult> AddProductViaStoredProc([FromBody] ProductWarehouseDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        using (var conn = new SqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+        {
+            conn.Open();
+
+            var cmd = new SqlCommand("dbo.AddProductToWarehouse", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.Parameters.AddWithValue("@IdProduct", dto.IdProduct);
+            cmd.Parameters.AddWithValue("@IdWarehouse", dto.IdWarehouse);
+            cmd.Parameters.AddWithValue("@IdOrder", dto.IdOrder);
+            cmd.Parameters.AddWithValue("@Amount", dto.Amount);
+            cmd.Parameters.AddWithValue("@CreatedAt", dto.CreatedAt);
+
+            try
+            {
+                var result = await cmd.ExecuteScalarAsync();
+                return Ok(new { IdProductWarehouse = result });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "Error");
+            }
+        }
+    }
+    public class ProductWarehouseDto
+    {
+        [Required]
+        public int IdProduct { get; set; }
+
+        [Required]
+        public int IdWarehouse { get; set; }
+
+        [Required]
+        public int IdOrder { get; set; }
+
+        [Required]
+        public int Amount { get; set; }
+
+        [Required]
+        public DateTime CreatedAt { get; set; }
     }
 }
